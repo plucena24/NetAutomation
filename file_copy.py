@@ -27,6 +27,7 @@ def copy_img(remote_dev, ftp_server, file_name, ftpuser='cisco', ftppass='cisco'
 
     if device_type == 'cisco_nxos':
         output += net_con.send_command('{ftppass}'.format(ftppass=ftppass), max_loops=max_loops)
+        return output
 
 if __name__ == '__main__':
 
