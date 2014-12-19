@@ -1,8 +1,9 @@
 import netmiko
+from netmiko.ssh_exception import NetMikoTimeoutException, NetMikoAuthenticationException
 from cdp_automation.cdp_functions import *
 from net_system.models import NetworkDevice, Credentials, SnmpCredentials
 import django
-from paramiko import AuthenticationException
+from paramiko import AuthenticationException, SSHException
 from socket import gaierror
 
 
@@ -39,6 +40,12 @@ while (len(saved) > 0):
         print '{} device has already been visited'.format(saved[0])
         saved.pop(0)
         continue
+    
+    # dont scan the NetApps! 
+    if saved[0].startswith('NA-'):
+        print '{} device is a NetApp - Skip'.format(saved[0])
+        saved.pop(0)
+        continue
 
     print '#' * 80
     print 
@@ -55,8 +62,11 @@ while (len(saved) > 0):
         # determine if its IOS/XE or Nexus and grab all of its neighbors
         ssh = SSHClass(ip=saved[0], username=nfcu_creds.username, password=nfcu_creds.password)
         ver_check, cdp_ = ssh.send_command('show version'), ssh.send_command('show cdp neigh det')
-
-    except (AuthenticationException, gaierror) as e:
+    
+    ## TODO ##
+    # remove unneeded exceptions
+    # Added ValueError since its raised by Netmiko when the router-prompt is not found
+    except (AuthenticationException, gaierror, SSHException, NetMikoAuthenticationException, NetMikoTimeoutException, ValueError) as e:
         # if we fail to connect - add the device to the "failed" list
         
         ## TODO ###
@@ -92,13 +102,18 @@ while (len(saved) > 0):
         if (neigh['dev_name'] in saved) or  (neigh['dev_name'] in failed):
             print "{} already saved or failed".format(neigh['dev_name'])
             continue
+        
+        # skip NetApp
+        if neigh['dev_name'].startswith('NA-'):
+            continue
+        
         try:
             print
             print
             print 'trying to see if {} is reachable...'.format(neigh['dev_name'])
             try_ssh = SSHClass(ip=neigh['dev_name'], username=nfcu_creds.username, password=nfcu_creds.password)
 
-        except (AuthenticationException, gaierror) as e:
+        except (AuthenticationException, gaierror, SSHException, NetMikoAuthenticationException, NetMikoTimeoutException, ValueError) as e:
             failed.append(neigh['dev_name'])
             print "failed to connect to {} due to {}".format(neigh['dev_name'], e)
             continue
