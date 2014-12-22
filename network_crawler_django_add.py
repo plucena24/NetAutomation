@@ -13,8 +13,8 @@ django.setup()
 # a single node has been manually saved onto the DB.
 # this is the root node from which all other nodes will be discovered.
 
-root_node = NetworkDevice.objects.all()[0]
-nfcu_creds = Credentials.objects.all()[0]
+root_node = NetworkDevice.objects.get(device_name='ROUTER1')
+creds = Credentials.objects.get(pk=1)
 
 # this node is NX-OS
 SSHClass = netmiko.ssh_dispatcher('cisco_nxos')
@@ -60,7 +60,7 @@ while (len(saved) > 0):
         print 'connecting to {}'.format(saved[0])
         # connect to the device being processing from the Queue
         # determine if its IOS/XE or Nexus and grab all of its neighbors
-        ssh = SSHClass(ip=saved[0], username=nfcu_creds.username, password=nfcu_creds.password)
+        ssh = SSHClass(ip=saved[0], username=creds.username, password=creds.password)
         ver_check, cdp_ = ssh.send_command('show version'), ssh.send_command('show cdp neigh det')
     
     ## TODO ##
@@ -111,7 +111,7 @@ while (len(saved) > 0):
             print
             print
             print 'trying to see if {} is reachable...'.format(neigh['dev_name'])
-            try_ssh = SSHClass(ip=neigh['dev_name'], username=nfcu_creds.username, password=nfcu_creds.password)
+            try_ssh = SSHClass(ip=neigh['dev_name'], username=creds.username, password=creds.password)
 
         except (AuthenticationException, gaierror, SSHException, NetMikoAuthenticationException, NetMikoTimeoutException, ValueError) as e:
             failed.append(neigh['dev_name'])
@@ -128,7 +128,7 @@ while (len(saved) > 0):
         device = NetworkDevice(
             device_name = neigh['dev_name'], 
             ip_address = neigh['ip_addr'], 
-            credentials = nfcu_creds, 
+            credentials = creds, 
             ssh_port = 22, 
             vendor = 'Cisco', 
             model = neigh['model'],
